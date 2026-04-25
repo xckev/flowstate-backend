@@ -60,9 +60,9 @@ async def get_authorization_url(db: AsyncIOMotorDatabase) -> tuple[str, str]:
         include_granted_scopes="true",
         prompt="consent",  # ensures refresh_token is always returned
     )
-    # requests_oauthlib stores the generated code_verifier on the session after
-    # authorization_url() is called (only present when PKCE is active).
-    code_verifier = getattr(flow.oauth2session, "_code_verifier", None)
+    # google-auth-oauthlib generates the code_verifier and stores it on the flow
+    # (only present when PKCE is active and autogenerate_code_verifier=True).
+    code_verifier = getattr(flow, "code_verifier", None)
 
     await db.oauth_states.replace_one(
         {"state": state},
@@ -91,7 +91,7 @@ async def exchange_code_for_credentials(
     flow = get_google_auth_flow()
     if code_verifier:
         # Restore the verifier so fetch_token() includes it in the POST body
-        flow.oauth2session._code_verifier = code_verifier
+        flow.code_verifier = code_verifier
     flow.fetch_token(code=code)
     return flow.credentials
 
