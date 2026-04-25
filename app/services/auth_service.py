@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import os
 
 import google.auth.transport.requests
 from google.oauth2.credentials import Credentials
@@ -9,6 +10,9 @@ from google_auth_oauthlib.flow import Flow
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.config import get_settings
+
+# Prevent oauthlib from raising an exception when Google returns different scopes
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
 # Scopes requested from Google
 SCOPES = [
