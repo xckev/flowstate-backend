@@ -96,4 +96,4 @@ We use standard OAuth 2.0 Authorization Code Flow.
 - `PUT /preferences` - Saves or updates the user's scheduling preferences. Send a JSON body matching the `UserPreferences` schema.
 
 #### Schedule
-- `POST /schedule/process` - The core AI endpoint. Sends the current calendar, the user's new todo list tasks, and their preferences to Gemini 2.5 Pro. Gemini figures out the optimal schedule and directly executes API calls to Google Calendar to add, edit, or delete events. Returns a `ProcessResult` object summarizing what changes were made.
+- `POST /schedule/process` - The core AI endpoint. Sends the current calendar, the user's natural language todo list, and their preferences to Gemini 2.5 Pro. Gemini figures out the optimal schedule, handling ambiguous times by assuming 1-hour blocks, and can even invite attendees if emails are provided. It directly executes API calls to Google Calendar to add, edit, or delete events. Returns a `ProcessResult` object containing a natural language `message` summarizing what changes were made, what items were held off, and any assumptions made.

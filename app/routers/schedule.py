@@ -6,8 +6,8 @@ import logging
 from fastapi import APIRouter, HTTPException, status
 
 from app.dependencies import CurrentUser, DbDep
-from app.models.gemini import AddEventArgs, DeleteEventArgs, EditEventArgs
-from app.models.response import ChangeResult, ProcessResult
+from app.models.gemini import AddEventArgs, DeleteEventArgs, EditEventArgs, FinalizeScheduleArgs
+from app.models.response import ProcessResult
 from app.models.schedule import ScheduleRequest
 from app.services import auth_service, calendar_service, gemini_service
 
@@ -29,11 +29,13 @@ async def process_schedule(
     Core endpoint — the full Gemini pipeline:
 
     1. Fetch the user's current primary calendar events for the given date.
-    2. Send date, events, tasks, and preferences to Gemini 2.5 Pro.
-    3. Parse Gemini's function-call response (add_event / edit_event / delete_event).
+    2. Send date, todos, and preferences to Gemini 2.5 Pro.
+    3. Parse Gemini's function-call response (add_event / edit_event / delete_event / finalize_schedule).
     4. Execute each tool call against the Google Calendar API.
-    5. Return a ProcessResult summarising all changes made.
+    5. Return a ProcessResult containing the summary message.
     """
+    logger.info("Processing schedule request for date %s with %d todos", request.date, len(request.todos))
+    
     # --- Step 1: Load credentials ---
     credentials = await auth_service.get_credentials(current_user["user_id"], db)
     if not credentials:
@@ -65,52 +67,29 @@ async def process_schedule(
         )
 
     # --- Step 4: Execute each tool call ---
-    changes: list[ChangeResult] = []
+    logger.info("Gemini returned %d tool calls", len(tool_calls))
+    message = "No summary provided by Gemini."
 
     for tool_call in tool_calls:
         fn = tool_call.function_name
         args = tool_call.args
+        
+        logger.info("Executing tool: %s with args: %s", fn, args.model_dump())
 
         try:
-            if fn == "add_event" and isinstance(args, AddEventArgs):
-                new_id = await calendar_service.add_event(credentials, args, request.timezone)
-                changes.append(
-                    ChangeResult(
-                        action="added",
-                        event_title=args.title,
-                        event_id=new_id,
-                    )
-                )
+            if fn == "finalize_schedule" and isinstance(args, FinalizeScheduleArgs):
+                message = args.message
+
+            elif fn == "add_event" and isinstance(args, AddEventArgs):
+                await calendar_service.add_event(credentials, args, request.timezone)
 
             elif fn == "edit_event" and isinstance(args, EditEventArgs):
                 await calendar_service.edit_event(credentials, args.event_id, args, request.timezone)
-                changes.append(
-                    ChangeResult(
-                        action="edited",
-                        event_title=args.title or "(untitled)",
-                        event_id=args.event_id,
-                    )
-                )
 
             elif fn == "delete_event" and isinstance(args, DeleteEventArgs):
                 await calendar_service.delete_event(credentials, args.event_id)
-                changes.append(
-                    ChangeResult(
-                        action="deleted",
-                        event_title="(deleted)",
-                        event_id=args.event_id,
-                    )
-                )
 
         except Exception as exc:
-            logger.error("Failed to execute %s: %s", fn, exc)
-            title = getattr(args, "title", None) or getattr(args, "event_id", "unknown")
-            changes.append(
-                ChangeResult(
-                    action=fn.replace("_event", "d"),  # type: ignore[arg-type]
-                    event_title=str(title),
-                    error=str(exc),
-                )
-            )
+            logger.error("Failed to execute %s with args %s: %s", fn, args.model_dump(), exc)
 
-    return ProcessResult(date=request.date, changes=changes)
+    return ProcessResult(message=message)

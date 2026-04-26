@@ -50,23 +50,10 @@ The core payload sent when the user hits "submit" to optimize their day.
 ```json
 {
   "date": "2026-04-25",
-  "events": [
-    {
-      "event_id": "google_event_123xyz",
-      "title": "Team Standup",
-      "start": "2026-04-25T09:00:00",
-      "end": "2026-04-25T10:00:00",
-      "location": "Zoom",
-      "is_all_day": false
-    }
-  ],
-  "tasks": [
-    {
-      "task_id": "local_task_999",
-      "title": "Write API documentation",
-      "duration_minutes": 60,
-      "deadline": "2026-04-25T17:00:00"
-    }
+  "timezone": "America/Los_Angeles",
+  "todos": [
+    "Team Standup from 9 to 10am on Zoom",
+    "Write API documentation (takes about an hour, due by 5pm)"
   ],
   "preferences": {
     "break_time": 15,
@@ -79,49 +66,18 @@ The core payload sent when the user hits "submit" to optimize their day.
 
 **Field Details:**
 - `date` (string, required): Target date in `YYYY-MM-DD` format.
-- `events` (array of `CalendarEvent`, default `[]`): Existing time-bound calendar events for the day (fetched earlier from `/calendar/events`) or new rigid events the user manually added on the frontend.
-- `tasks` (array of `CalendarTask`, default `[]`): The floating work tasks that Gemini needs to schedule into the free slots.
+- `timezone` (string, required): User's local IANA timezone.
+- `todos` (array of string, default `[]`): The floating work tasks and events in natural language that Gemini needs to schedule into the free slots. (e.g. "Meeting with Bob at 2pm", "Workout for 45 mins"). Gemini can also add invitees if email addresses are included in the natural language text.
 - `preferences` (object `UserPreferences`, required): The user's preferences for this specific scheduling run.
-
-#### `CalendarEvent`
-- `event_id` (string | null, default `null`): Google Calendar event ID. Set to `null` if this is a brand new event the user just created on the frontend that isn't on GCal yet.
-- `title` (string, required): Title of the event.
-- `start` (string, required): ISO 8601 datetime string (e.g., `"2026-04-25T09:00:00"`).
-- `end` (string, required): ISO 8601 datetime string.
-- `location` (string | null, default `null`): Event location.
-- `is_all_day` (boolean, default `false`): Whether it is an all-day event.
-
-#### `CalendarTask`
-- `task_id` (string | null, default `null`): The frontend's internal ID for this task (so the frontend can track it). Not a GCal ID.
-- `title` (string, required): Title of the task.
-- `duration_minutes` (integer | null, default `null`): Expected duration. Must be > 0. Gemini uses this to find a suitable free slot.
-- `deadline` (string | null, default `null`): ISO 8601 datetime — a hard deadline for when this task must be finished.
 
 ### `ProcessResult` (POST Response Body)
 Returned after Gemini successfully executes API calls to Google Calendar.
 
 ```json
 {
-  "date": "2026-04-25",
-  "changes": [
-    {
-      "action": "added",
-      "event_title": "Write API documentation",
-      "event_id": "new_google_event_abc789",
-      "error": null
-    }
-  ],
-  "gemini_reasoning": null
+  "message": "I scheduled your Team Standup from 9:00 AM to 10:00 AM. I held off on scheduling 'Dinner' as no start time was provided. For 'Write API documentation', I assumed a 1 hour duration. Please include specific times if you want a more exact schedule."
 }
 ```
 
 **Field Details:**
-- `date` (string): The date that was processed.
-- `changes` (array of `ChangeResult`): A list summarizing every modification Gemini made directly to the user's Google Calendar.
-- `gemini_reasoning` (string | null): Optional explanation from the AI about why it scheduled things the way it did (if implemented).
-
-#### `ChangeResult`
-- `action` (string): Will be exactly `"added"`, `"edited"`, or `"deleted"`.
-- `event_title` (string): The title of the event that was modified.
-- `event_id` (string | null): The Google Calendar event ID (especially useful for newly `"added"` events).
-- `error` (string | null): If the Google Calendar API call failed for this specific event, the error message will be here.
+- `message` (string): A natural language message summarizing what was scheduled, what assumptions were made, what items were held off due to missing information, and a call-to-action for the user.

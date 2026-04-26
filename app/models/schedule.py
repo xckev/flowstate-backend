@@ -46,26 +46,8 @@ class CalendarEvent(BaseModel):
     start: str = Field(..., description="ISO 8601 datetime string, e.g. 2026-04-25T09:00:00")
     end: str = Field(..., description="ISO 8601 datetime string, e.g. 2026-04-25T10:00:00")
     location: str | None = None
+    attendees: list[str] | None = None
     is_all_day: bool = False
-
-
-class CalendarTask(BaseModel):
-    """A work task to be placed into free slots on the calendar."""
-
-    task_id: str | None = Field(
-        default=None,
-        description="Client-side task ID. Not a GCal event ID.",
-    )
-    title: str
-    duration_minutes: int | None = Field(
-        default=None,
-        gt=0,
-        description="Expected duration. Gemini uses this to find a suitable free slot.",
-    )
-    deadline: str | None = Field(
-        default=None,
-        description="ISO 8601 datetime — hard deadline for this task, if any.",
-    )
 
 
 class ScheduleRequest(BaseModel):
@@ -80,13 +62,9 @@ class ScheduleRequest(BaseModel):
         ...,
         description="User's local IANA timezone, e.g. 'America/Los_Angeles'.",
     )
-    events: list[CalendarEvent] = Field(
+    todos: list[str] = Field(
         default_factory=list,
-        description="Existing or new time-bound calendar events for the day.",
-    )
-    tasks: list[CalendarTask] = Field(
-        default_factory=list,
-        description="Work tasks to be scheduled into free slots on the calendar.",
+        description="List of natural language todos from the user.",
     )
     preferences: UserPreferences = Field(
         ...,

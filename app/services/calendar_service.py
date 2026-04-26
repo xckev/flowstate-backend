@@ -28,12 +28,16 @@ def _parse_event(raw: dict) -> CalendarEvent:
     end_str = end.get("dateTime") or end.get("date", "")
     is_all_day = "date" in start and "dateTime" not in start
 
+    # Extract attendee emails if present
+    attendees = [a.get("email") for a in raw.get("attendees", []) if a.get("email")]
+
     return CalendarEvent(
         event_id=raw.get("id"),
         title=raw.get("summary", "(No title)"),
         start=start_str,
         end=end_str,
         location=raw.get("location"),
+        attendees=attendees if attendees else None,
         is_all_day=is_all_day,
     )
 
@@ -79,7 +83,9 @@ async def add_event(credentials: Credentials, args: AddEventArgs, timezone: str)
     """
     service = _build_service(credentials)
 
-    if args.is_all_day:
+    is_all_day = args.is_all_day or (bool(args.start_time) and len(args.start_time) == 10)
+
+    if is_all_day:
         start_date = args.start_time[:10]
         end_date = args.end_time[:10] if args.end_time else (
             date.fromisoformat(start_date) + timedelta(days=1)
@@ -101,6 +107,9 @@ async def add_event(credentials: Credentials, args: AddEventArgs, timezone: str)
 
     if args.location:
         body["location"] = args.location
+        
+    if args.attendees:
+        body["attendees"] = [{"email": email} for email in args.attendees if "@" in email]
 
     created = service.events().insert(calendarId="primary", body=body).execute()
     return created.get("id", "")
@@ -116,7 +125,9 @@ async def edit_event(
     if args.title is not None:
         patch_body["summary"] = args.title
 
-    if args.is_all_day:
+    is_all_day = args.is_all_day or (bool(args.start_time) and len(args.start_time) == 10)
+
+    if is_all_day:
         if args.start_time is not None:
             start_date = args.start_time[:10]
             patch_body["start"] = {"date": start_date}
@@ -128,13 +139,30 @@ async def edit_event(
                 end_date = (date.fromisoformat(start_date) + timedelta(days=1)).isoformat()
             patch_body["end"] = {"date": end_date}
     else:
-        if args.start_time is not None:
-            patch_body["start"] = {"dateTime": args.start_time, "timeZone": timezone}
-        if args.end_time is not None:
-            patch_body["end"] = {"dateTime": args.end_time, "timeZone": timezone}
+        # If modifying times for a timed event, we should provide both to avoid 400s 
+        # when converting an all-day event to a timed event.
+        if args.start_time is not None or args.end_time is not None:
+            st = args.start_time
+            et = args.end_time
+            if st is not None and et is None:
+                try:
+                    et = (datetime.fromisoformat(st) + timedelta(hours=1)).isoformat()
+                except Exception:
+                    et = st
+            elif et is not None and st is None:
+                try:
+                    st = (datetime.fromisoformat(et) - timedelta(hours=1)).isoformat()
+                except Exception:
+                    st = et
+
+            patch_body["start"] = {"dateTime": st, "timeZone": timezone}
+            patch_body["end"] = {"dateTime": et, "timeZone": timezone}
 
     if args.location is not None:
         patch_body["location"] = args.location
+        
+    if args.attendees is not None:
+        patch_body["attendees"] = [{"email": email} for email in args.attendees if "@" in email]
 
     if patch_body:
         service.events().patch(

@@ -14,6 +14,7 @@ class AddEventArgs(BaseModel):
     end_time: str = Field(..., description="ISO 8601 datetime string, or YYYY-MM-DD exclusive end for all-day events")
     location: str | None = None
     is_all_day: bool = False
+    attendees: list[str] | None = Field(default=None, description="List of email addresses to invite")
 
 
 class EditEventArgs(BaseModel):
@@ -25,6 +26,7 @@ class EditEventArgs(BaseModel):
     end_time: str | None = Field(default=None, description="ISO 8601 datetime string, or YYYY-MM-DD exclusive end for all-day events")
     location: str | None = None
     is_all_day: bool = False
+    attendees: list[str] | None = Field(default=None, description="List of email addresses to invite")
 
 
 class DeleteEventArgs(BaseModel):
@@ -33,8 +35,14 @@ class DeleteEventArgs(BaseModel):
     event_id: str = Field(..., description="Google Calendar event ID to delete")
 
 
+class FinalizeScheduleArgs(BaseModel):
+    """Arguments for the finalize_schedule tool call."""
+
+    message: str = Field(..., description="Summary of scheduled items, held off items, assumptions, and call-to-action.")
+
+
 class ToolCall(BaseModel):
     """A single structured function call returned by Gemini."""
 
-    function_name: Literal["add_event", "edit_event", "delete_event"]
-    args: AddEventArgs | EditEventArgs | DeleteEventArgs
+    function_name: Literal["add_event", "edit_event", "delete_event", "finalize_schedule"]
+    args: AddEventArgs | EditEventArgs | DeleteEventArgs | FinalizeScheduleArgs
