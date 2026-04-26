@@ -12,7 +12,7 @@ Used to fetch and update the user's scheduling constraints.
 ```json
 {
   "break_time": 15,
-  "context_switch": 30,
+  "context_switch": true,
   "burnout": 90,
   "no_work_time": [
     {
@@ -25,7 +25,7 @@ Used to fetch and update the user's scheduling constraints.
 
 **Field Details:**
 - `break_time` (integer, required): Minimum free minutes to leave between consecutive events/tasks. Must be >= 0.
-- `context_switch` (integer, required): Minimum time in minutes that a single calendar entry for a task can take. Must be >= 0.
+- `context_switch` (boolean, required): Whether to avoid context switching by grouping task blocks together.
 - `burnout` (integer, required): Maximum time in minutes that a task should be scheduled for consecutively. Must be >= 0.
 - `no_work_time` (array of `TimeRange`, default `[]`): Time windows that must remain free (no events or tasks scheduled).
 
@@ -70,7 +70,7 @@ The core payload sent when the user hits "submit" to optimize their day.
   ],
   "preferences": {
     "break_time": 15,
-    "context_switch": 30,
+    "context_switch": true,
     "burnout": 90,
     "no_work_time": []
   }
