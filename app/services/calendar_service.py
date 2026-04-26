@@ -1,7 +1,7 @@
 """Google Calendar API wrapper — all operations on the primary calendar."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 import zoneinfo
 
 import googleapiclient.discovery
@@ -79,11 +79,26 @@ async def add_event(credentials: Credentials, args: AddEventArgs, timezone: str)
     """
     service = _build_service(credentials)
 
-    body: dict = {
-        "summary": args.title,
-        "start": {"dateTime": args.start_time, "timeZone": timezone},
-        "end": {"dateTime": args.end_time, "timeZone": timezone},
-    }
+    if args.is_all_day:
+        start_date = args.start_time[:10]
+        end_date = args.end_time[:10] if args.end_time else (
+            date.fromisoformat(start_date) + timedelta(days=1)
+        ).isoformat()
+        # Ensure end is always the day after start for single-day all-day events
+        if end_date == start_date:
+            end_date = (date.fromisoformat(start_date) + timedelta(days=1)).isoformat()
+        body: dict = {
+            "summary": args.title,
+            "start": {"date": start_date},
+            "end": {"date": end_date},
+        }
+    else:
+        body = {
+            "summary": args.title,
+            "start": {"dateTime": args.start_time, "timeZone": timezone},
+            "end": {"dateTime": args.end_time, "timeZone": timezone},
+        }
+
     if args.location:
         body["location"] = args.location
 
@@ -100,10 +115,24 @@ async def edit_event(
     patch_body: dict = {}
     if args.title is not None:
         patch_body["summary"] = args.title
-    if args.start_time is not None:
-        patch_body["start"] = {"dateTime": args.start_time, "timeZone": timezone}
-    if args.end_time is not None:
-        patch_body["end"] = {"dateTime": args.end_time, "timeZone": timezone}
+
+    if args.is_all_day:
+        if args.start_time is not None:
+            start_date = args.start_time[:10]
+            patch_body["start"] = {"date": start_date}
+            if args.end_time is not None:
+                end_date = args.end_time[:10]
+                if end_date == start_date:
+                    end_date = (date.fromisoformat(start_date) + timedelta(days=1)).isoformat()
+            else:
+                end_date = (date.fromisoformat(start_date) + timedelta(days=1)).isoformat()
+            patch_body["end"] = {"date": end_date}
+    else:
+        if args.start_time is not None:
+            patch_body["start"] = {"dateTime": args.start_time, "timeZone": timezone}
+        if args.end_time is not None:
+            patch_body["end"] = {"dateTime": args.end_time, "timeZone": timezone}
+
     if args.location is not None:
         patch_body["location"] = args.location
 

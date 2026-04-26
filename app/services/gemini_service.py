@@ -32,13 +32,17 @@ _ADD_EVENT_FUNC = types.FunctionDeclaration(
         type=types.Type.OBJECT,
         properties={
             "title": types.Schema(type=types.Type.STRING, description="Event title"),
+            "is_all_day": types.Schema(
+                type=types.Type.BOOLEAN,
+                description="True if this is an all-day event with no specific start/end time",
+            ),
             "start_time": types.Schema(
                 type=types.Type.STRING,
-                description="ISO 8601 datetime, e.g. 2026-04-25T09:00:00-07:00",
+                description="Timed events: ISO 8601 with timezone offset, e.g. 2026-04-25T09:00:00-07:00. All-day events: date string, e.g. 2026-04-25",
             ),
             "end_time": types.Schema(
                 type=types.Type.STRING,
-                description="ISO 8601 datetime, e.g. 2026-04-25T10:00:00-07:00",
+                description="Timed events: ISO 8601 with timezone offset. All-day events: exclusive end date (typically start + 1 day), e.g. 2026-04-26",
             ),
             "location": types.Schema(
                 type=types.Type.STRING, description="Optional event location"
@@ -59,13 +63,17 @@ _EDIT_EVENT_FUNC = types.FunctionDeclaration(
                 description="Google Calendar event ID of the event to edit",
             ),
             "title": types.Schema(type=types.Type.STRING, description="New event title"),
+            "is_all_day": types.Schema(
+                type=types.Type.BOOLEAN,
+                description="True if converting to or editing an all-day event",
+            ),
             "start_time": types.Schema(
                 type=types.Type.STRING,
-                description="New start time as ISO 8601 datetime string",
+                description="Timed events: ISO 8601 with timezone offset. All-day events: date string (YYYY-MM-DD)",
             ),
             "end_time": types.Schema(
                 type=types.Type.STRING,
-                description="New end time as ISO 8601 datetime string",
+                description="Timed events: ISO 8601 with timezone offset. All-day events: exclusive end date (YYYY-MM-DD)",
             ),
             "location": types.Schema(
                 type=types.Type.STRING, description="New event location"
@@ -104,6 +112,8 @@ _TOOL_CONFIG = types.ToolConfig(
 
 def _format_event(event: CalendarEvent) -> str:
     id_str = f" [event_id={event.event_id}]" if event.event_id else " [new, no id yet]"
+    if event.is_all_day:
+        return f"- {event.title}{id_str}: {event.start[:10]} (all-day)"
     return f"- {event.title}{id_str}: {event.start} → {event.end}"
 
 
@@ -192,7 +202,8 @@ to satisfy the user's intent.
    - If a calendar entry corresponding to a task is NOT in the submitted tasks list, call delete_event.
 3. Respect all scheduling constraints strictly.
 4. Output ONLY function calls — no plain text, no commentary.
-5. All times must be ISO 8601 with a timezone offset (e.g., 2026-04-25T09:00:00-07:00).
+5. For timed events: all times must be ISO 8601 with a timezone offset (e.g., 2026-04-25T09:00:00-07:00).
+6. For all-day events (marked "all-day" above): set is_all_day=true, use the exact date shown (YYYY-MM-DD) for start_time, and set end_time to the following day (e.g., start 2026-04-25 → end 2026-04-26). Never assign a time to an all-day event.
 """
 
 
