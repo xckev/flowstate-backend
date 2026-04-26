@@ -13,7 +13,7 @@ The intelligent engine behind **Flowstate**, a personal secretary that converts 
 - **Database:** MongoDB (Motor Asyncio)
 - **AI Integration:** Google AI Models (configured via environment)
 - **Authentication:** Google OAuth 2.0 + JWT
-- **Frontend Repo:** [flowstate-ai](https://github.com/xckev/flowstate-ai)
+- **Frontend Repo:** [flowstate-ai](https://github.com/ianchiu-333/flowstate-ai)
 
 ---
 
