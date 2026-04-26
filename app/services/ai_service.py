@@ -1,7 +1,4 @@
-"""Gemini 2.5 Pro integration — builds prompt and parses structured tool-call output.
-
-Uses the current google-genai SDK (google.genai).
-"""
+"""AI service — core logic for interacting with the Google AI model."""
 from __future__ import annotations
 
 import logging
@@ -11,7 +8,7 @@ from google import genai
 from google.genai import types
 
 from app.config import get_settings
-from app.models.gemini import (
+from app.models.ai import (
     AddEventArgs,
     DeleteEventArgs,
     EditEventArgs,
@@ -22,31 +19,35 @@ from app.models.schedule import CalendarEvent, ScheduleRequest
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
-# Gemini function declarations (google.genai style)
+# Tool definitions
 # ---------------------------------------------------------------------------
 
 _ADD_EVENT_FUNC = types.FunctionDeclaration(
     name="add_event",
-    description="Add a new event to the user's Google Calendar primary calendar.",
+    description="Add a new event or task to the user's Google Calendar primary calendar.",
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
-            "title": types.Schema(type=types.Type.STRING, description="Event title"),
-            "is_all_day": types.Schema(
-                type=types.Type.BOOLEAN,
-                description="True if this is an all-day event with no specific start/end time",
+            "title": types.Schema(
+                type=types.Type.STRING, description="Event title (e.g., 'Team Standup')"
             ),
             "start_time": types.Schema(
                 type=types.Type.STRING,
-                description="Timed events: ISO 8601 with timezone offset, e.g. 2026-04-25T09:00:00-07:00. All-day events: date string, e.g. 2026-04-25",
+                description="Timed events: ISO 8601 with timezone offset (e.g., 2026-04-25T09:00:00-07:00). All-day events: date string (YYYY-MM-DD)",
             ),
             "end_time": types.Schema(
                 type=types.Type.STRING,
-                description="Timed events: ISO 8601 with timezone offset. All-day events: exclusive end date (typically start + 1 day), e.g. 2026-04-26",
+                description="Timed events: ISO 8601 with timezone offset. All-day events: exclusive end date string (YYYY-MM-DD)",
             ),
             "location": types.Schema(
-                type=types.Type.STRING, description="Optional event location"
+                type=types.Type.STRING,
+                description="Optional location (physical address or meeting link)",
+            ),
+            "is_all_day": types.Schema(
+                type=types.Type.BOOLEAN,
+                description="True if this is an all-day event (no specific time)",
             ),
             "attendees": types.Schema(
                 type=types.Type.ARRAY,
@@ -60,15 +61,17 @@ _ADD_EVENT_FUNC = types.FunctionDeclaration(
 
 _EDIT_EVENT_FUNC = types.FunctionDeclaration(
     name="edit_event",
-    description="Modify an existing event on the user's Google Calendar primary calendar.",
+    description="Update an existing event on the user's Google Calendar primary calendar.",
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
             "event_id": types.Schema(
                 type=types.Type.STRING,
-                description="Google Calendar event ID of the event to edit",
+                description="The Google Calendar event ID of the event to modify",
             ),
-            "title": types.Schema(type=types.Type.STRING, description="New event title"),
+            "title": types.Schema(
+                type=types.Type.STRING, description="New title if changing"
+            ),
             "is_all_day": types.Schema(
                 type=types.Type.BOOLEAN,
                 description="True if converting to or editing an all-day event",
@@ -126,7 +129,7 @@ _FINALIZE_FUNC = types.FunctionDeclaration(
 
 _TOOLS = [types.Tool(function_declarations=[_ADD_EVENT_FUNC, _EDIT_EVENT_FUNC, _DELETE_EVENT_FUNC, _FINALIZE_FUNC])]
 
-# Force Gemini to always respond with a function call (no free text)
+# Force the model to always respond with a function call (no free text)
 _TOOL_CONFIG = types.ToolConfig(
     function_calling_config=types.FunctionCallingConfig(mode="ANY")
 )
@@ -184,11 +187,10 @@ def _build_system_prompt(
             f"- Do NOT schedule anything during these blocked windows: {blocked_str}. "
             "These windows must remain completely free."
         )
-    constraints_str = (
-        "\n".join(constraint_lines) if constraint_lines else "- No special scheduling constraints."
-    )
 
-    return f"""You are FlowState, an intelligent calendar scheduling assistant.
+    constraints_str = "\n".join(constraint_lines) if constraint_lines else "- No specific constraints."
+
+    return f"""You are FlowState, an intelligent calendar scheduling assistant. 
 
 Your job is to analyse the user's existing Google Calendar, their submitted natural language todos, \
 and their scheduling preferences, then output the minimal set of Google Calendar changes needed \
@@ -237,17 +239,17 @@ to satisfy the user's intent.
 # Main service function
 # ---------------------------------------------------------------------------
 
-async def call_gemini(
+async def call_ai(
     request: ScheduleRequest,
     current_gcal_events: list[CalendarEvent],
 ) -> list[ToolCall]:
     """
-    Call Gemini 2.5 Pro with the schedule request and current calendar state.
+    Call the AI model with the schedule request and current calendar state.
 
-    Returns a list of ToolCall objects parsed from Gemini's function-call response.
+    Returns a list of ToolCall objects parsed from the AI's function-call response.
     """
     settings = get_settings()
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = genai.Client(api_key=settings.google_ai_api_key)
 
     system_prompt = _build_system_prompt(request, current_gcal_events)
     user_message = (
@@ -256,7 +258,7 @@ async def call_gemini(
     )
 
     response = client.models.generate_content(
-        model="gemma-4-31b-it",
+        model=settings.google_model_id,
         contents=user_message,
         config=types.GenerateContentConfig(
             system_instruction=system_prompt,
@@ -285,14 +287,14 @@ async def call_gemini(
                 elif fn_name == "finalize_schedule":
                     args = FinalizeScheduleArgs(**args_dict)
                 else:
-                    logger.warning("Unknown function call from Gemini: %s", fn_name)
+                    logger.warning("Unknown function call from AI model: %s", fn_name)
                     continue
 
                 tool_calls.append(ToolCall(function_name=fn_name, args=args))
 
             except Exception as exc:
                 logger.error(
-                    "Failed to parse Gemini function call '%s' with args %s: %s",
+                    "Failed to parse AI function call '%s' with args %s: %s",
                     fn_name,
                     args_dict,
                     exc,

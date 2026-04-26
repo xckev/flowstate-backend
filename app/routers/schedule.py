@@ -6,10 +6,10 @@ import logging
 from fastapi import APIRouter, HTTPException, status
 
 from app.dependencies import CurrentUser, DbDep
-from app.models.gemini import AddEventArgs, DeleteEventArgs, EditEventArgs, FinalizeScheduleArgs
+from app.models.ai import AddEventArgs, DeleteEventArgs, EditEventArgs, FinalizeScheduleArgs
 from app.models.response import ProcessResult
 from app.models.schedule import ScheduleRequest
-from app.services import auth_service, calendar_service, gemini_service
+from app.services import auth_service, calendar_service, ai_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/schedule", tags=["schedule"])
@@ -26,11 +26,11 @@ async def process_schedule(
     db: DbDep,
 ):
     """
-    Core endpoint — the full Gemini pipeline:
+    Core endpoint — the full AI scheduling pipeline:
 
     1. Fetch the user's current primary calendar events for the given date.
-    2. Send date, todos, and preferences to Gemini 2.5 Pro.
-    3. Parse Gemini's function-call response (add_event / edit_event / delete_event / finalize_schedule).
+    2. Send date, todos, and preferences to the AI model.
+    3. Parse the AI's function-call response (add_event / edit_event / delete_event / finalize_schedule).
     4. Execute each tool call against the Google Calendar API.
     5. Return a ProcessResult containing the summary message.
     """
@@ -56,19 +56,19 @@ async def process_schedule(
             detail=f"Could not fetch Google Calendar events: {exc}",
         )
 
-    # --- Step 3: Call Gemini ---
+    # --- Step 3: Call AI Model ---
     try:
-        tool_calls = await gemini_service.call_gemini(request, current_events)
+        tool_calls = await ai_service.call_ai(request, current_events)
     except Exception as exc:
-        logger.error("Gemini call failed: %s", exc)
+        logger.error("AI call failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Gemini API error: {exc}",
+            detail=f"AI API error: {exc}",
         )
 
     # --- Step 4: Execute each tool call ---
-    logger.info("Gemini returned %d tool calls", len(tool_calls))
-    message = "No summary provided by Gemini."
+    logger.info("AI returned %d tool calls", len(tool_calls))
+    message = "No summary provided by the AI."
 
     for tool_call in tool_calls:
         fn = tool_call.function_name

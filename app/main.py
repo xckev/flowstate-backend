@@ -43,7 +43,7 @@ app = FastAPI(
     title="flowstate-ai API",
     description=(
         "Backend for flowstate-ai — converts todo lists into Google Calendar changes "
-        "using Gemini 2.5 Pro."
+        "using Google AI models."
     ),
     version="0.1.0",
     lifespan=lifespan,

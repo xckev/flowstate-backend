@@ -1,4 +1,4 @@
-"""Pydantic models for Gemini tool calls."""
+"""Pydantic models for AI tool calls."""
 from __future__ import annotations
 
 from typing import Literal
@@ -42,7 +42,7 @@ class FinalizeScheduleArgs(BaseModel):
 
 
 class ToolCall(BaseModel):
-    """A single structured function call returned by Gemini."""
+    """A single structured function call returned by the AI model."""
 
     function_name: Literal["add_event", "edit_event", "delete_event", "finalize_schedule"]
     args: AddEventArgs | EditEventArgs | DeleteEventArgs | FinalizeScheduleArgs

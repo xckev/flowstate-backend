@@ -67,11 +67,11 @@ The core payload sent when the user hits "submit" to optimize their day.
 **Field Details:**
 - `date` (string, required): Target date in `YYYY-MM-DD` format.
 - `timezone` (string, required): User's local IANA timezone.
-- `todos` (array of string, default `[]`): The floating work tasks and events in natural language that Gemini needs to schedule into the free slots. (e.g. "Meeting with Bob at 2pm", "Workout for 45 mins"). Gemini can also add invitees if email addresses are included in the natural language text.
+- `todos` (array of string, default `[]`): The floating work tasks and events in natural language that the AI needs to schedule into the free slots. (e.g. "Meeting with Bob at 2pm", "Workout for 45 mins"). The AI can also add invitees if email addresses are included in the natural language text.
 - `preferences` (object `UserPreferences`, required): The user's preferences for this specific scheduling run.
 
 ### `ProcessResult` (POST Response Body)
-Returned after Gemini successfully executes API calls to Google Calendar.
+Returned after the AI successfully executes API calls to Google Calendar.
 
 ```json
 {

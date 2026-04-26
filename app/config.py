@@ -11,8 +11,9 @@ class Settings(BaseSettings):
     google_client_id: str
     google_client_secret: str
 
-    # Gemini
-    gemini_api_key: str
+    # AI Model
+    google_ai_api_key: str
+    google_model_id: str = "gemma-4-31b-it"
 
     # MongoDB
     mongodb_uri: str = "mongodb://localhost:27017"

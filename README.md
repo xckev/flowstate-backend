@@ -1,11 +1,11 @@
 # flowstate-ai Backend
 
-The backend service for flowstate-ai, an AI-powered productivity web app that converts your todo list into a fully optimized Google Calendar schedule using Gemini 2.5 Pro.
+The backend service for flowstate-ai, an AI-powered productivity web app that converts your todo list into a fully optimized Google Calendar schedule using Google AI models.
 
 ## Tech Stack
 - **Framework:** FastAPI (Python)
 - **Database:** MongoDB (Motor Asyncio)
-- **AI Integration:** Google Gemini 2.5 Pro
+- **AI Integration:** Google AI Models (Gemini, Gemma, etc.)
 - **Authentication:** Google OAuth 2.0 (with PKCE) + JWT
 
 ---
@@ -16,7 +16,7 @@ The backend service for flowstate-ai, an AI-powered productivity web app that co
 - Python 3.10+
 - MongoDB installed and running locally on default port 27017 (or a MongoDB Atlas URI)
 - A Google Cloud Project with the Calendar API and OAuth enabled
-- A Google Gemini API key
+- A Google AI API key
 
 ### Installation
 
@@ -38,7 +38,8 @@ The backend service for flowstate-ai, an AI-powered productivity web app that co
    Open `.env` and fill in the required values:
    - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID.
    - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret.
-   - `GEMINI_API_KEY`: Your Gemini API Key from Google AI Studio.
+   - `GOOGLE_AI_API_KEY`: Your Google AI API Key from Google AI Studio.
+   - `GOOGLE_MODEL_ID`: The ID of the model to use (e.g., `gemini-2.5-pro` or `gemma-4-31b-it`).
    - `MONGODB_URI`: E.g., `mongodb://localhost:27017`.
    - `MONGODB_DB_NAME`: E.g., `flowstate`.
    - `FRONTEND_ORIGIN`: Important for CORS. Default is `http://localhost:3000` or `http://localhost:5173`.
@@ -96,4 +97,4 @@ We use standard OAuth 2.0 Authorization Code Flow.
 - `PUT /preferences` - Saves or updates the user's scheduling preferences. Send a JSON body matching the `UserPreferences` schema.
 
 #### Schedule
-- `POST /schedule/process` - The core AI endpoint. Sends the current calendar, the user's natural language todo list, and their preferences to Gemini 2.5 Pro. Gemini figures out the optimal schedule, handling ambiguous times by assuming 1-hour blocks, and can even invite attendees if emails are provided. It directly executes API calls to Google Calendar to add, edit, or delete events. Returns a `ProcessResult` object containing a natural language `message` summarizing what changes were made, what items were held off, and any assumptions made.
+- `POST /schedule/process` - The core AI endpoint. Sends the current calendar, the user's natural language todo list, and their preferences to the AI model. The AI figures out the optimal schedule, handling ambiguous times by assuming 1-hour blocks, and can even invite attendees if emails are provided. It directly executes API calls to Google Calendar to add, edit, or delete events. Returns a `ProcessResult` object containing a natural language `message` summarizing what changes were made, what items were held off, and any assumptions made.

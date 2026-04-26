@@ -7,7 +7,7 @@ import zoneinfo
 import googleapiclient.discovery
 from google.oauth2.credentials import Credentials
 
-from app.models.gemini import AddEventArgs, EditEventArgs
+from app.models.ai import AddEventArgs, EditEventArgs
 from app.models.schedule import CalendarEvent
 
 
