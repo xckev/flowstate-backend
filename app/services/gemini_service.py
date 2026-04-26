@@ -143,9 +143,9 @@ def _build_system_prompt(
         constraint_lines.append(
             f"- Leave at least {prefs.break_time} minutes of free buffer between every event and task."
         )
-    if prefs.context_switch > 0:
+    if prefs.context_switch:
         constraint_lines.append(
-            f"- Ensure any single scheduled block for a task is at least {prefs.context_switch} minutes long to avoid excessive context switching."
+            "- Avoid context switching: group related task blocks together and do not interleave different tasks."
         )
     if prefs.burnout > 0:
         constraint_lines.append(

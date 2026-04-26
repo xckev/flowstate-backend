@@ -19,11 +19,9 @@ class UserPreferences(BaseModel):
         ge=0,
         description="Minimum free minutes to leave between consecutive events/tasks.",
     )
-    context_switch: int = Field(
+    context_switch: bool = Field(
         ...,
-        description=(
-            "Minimum time in minutes that a single calendar entry for a task can take."
-        ),
+        description="Whether to avoid context switching by grouping task blocks.",
     )
     burnout: int = Field(
         ...,
