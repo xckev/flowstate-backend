@@ -28,12 +28,16 @@ def _parse_event(raw: dict) -> CalendarEvent:
     end_str = end.get("dateTime") or end.get("date", "")
     is_all_day = "date" in start and "dateTime" not in start
 
+    # Extract attendee emails if present
+    attendees = [a.get("email") for a in raw.get("attendees", []) if a.get("email")]
+
     return CalendarEvent(
         event_id=raw.get("id"),
         title=raw.get("summary", "(No title)"),
         start=start_str,
         end=end_str,
         location=raw.get("location"),
+        attendees=attendees if attendees else None,
         is_all_day=is_all_day,
     )
 

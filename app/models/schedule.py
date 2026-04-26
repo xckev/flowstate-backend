@@ -46,6 +46,7 @@ class CalendarEvent(BaseModel):
     start: str = Field(..., description="ISO 8601 datetime string, e.g. 2026-04-25T09:00:00")
     end: str = Field(..., description="ISO 8601 datetime string, e.g. 2026-04-25T10:00:00")
     location: str | None = None
+    attendees: list[str] | None = None
     is_all_day: bool = False
 
 

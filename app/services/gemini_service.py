@@ -139,9 +139,10 @@ _TOOL_CONFIG = types.ToolConfig(
 def _format_event(event: CalendarEvent) -> str:
     id_str = f" [event_id={event.event_id}]" if event.event_id else " [new, no id yet]"
     loc_str = f" (Location: {event.location})" if event.location else ""
+    att_str = f" (Attendees: {', '.join(event.attendees)})" if event.attendees else ""
     if event.is_all_day:
-        return f"- {event.title}{id_str}{loc_str}: {event.start[:10]} (all-day)"
-    return f"- {event.title}{id_str}{loc_str}: {event.start} → {event.end}"
+        return f"- {event.title}{id_str}{loc_str}{att_str}: {event.start[:10]} (all-day)"
+    return f"- {event.title}{id_str}{loc_str}{att_str}: {event.start} → {event.end}"
 
 
 def _build_system_prompt(
