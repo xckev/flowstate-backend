@@ -23,31 +23,37 @@ SCOPES = [
 ]
 
 
-def _build_client_config(settings) -> dict:
+def _build_client_config(settings, extra_redirect_uri: str | None = None) -> dict:
     """Construct the client_config dict expected by google_auth_oauthlib."""
+    redirect_uris = [settings.oauth_redirect_uri]
+    if extra_redirect_uri:
+        redirect_uris.append(extra_redirect_uri)
     return {
         "web": {
             "client_id": settings.google_client_id,
             "client_secret": settings.google_client_secret,
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [settings.oauth_redirect_uri],
+            "redirect_uris": redirect_uris,
         }
     }
 
 
-def get_google_auth_flow() -> Flow:
+def get_google_auth_flow(redirect_uri: str | None = None) -> Flow:
     """Build and return a configured OAuth 2.0 Flow object."""
     settings = get_settings()
+    effective_uri = redirect_uri or settings.oauth_redirect_uri
     flow = Flow.from_client_config(
-        _build_client_config(settings),
+        _build_client_config(settings, extra_redirect_uri=redirect_uri),
         scopes=SCOPES,
-        redirect_uri=settings.oauth_redirect_uri,
+        redirect_uri=effective_uri,
     )
     return flow
 
 
-async def get_authorization_url(db: AsyncIOMotorDatabase) -> tuple[str, str]:
+async def get_authorization_url(
+    db: AsyncIOMotorDatabase, redirect_uri: str | None = None
+) -> tuple[str, str]:
     """
     Generate the Google OAuth authorization URL and persist the PKCE state to MongoDB.
 
@@ -58,7 +64,7 @@ async def get_authorization_url(db: AsyncIOMotorDatabase) -> tuple[str, str]:
     Returns:
         (authorization_url, state)
     """
-    flow = get_google_auth_flow()
+    flow = get_google_auth_flow(redirect_uri=redirect_uri)
     authorization_url, state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -73,6 +79,7 @@ async def get_authorization_url(db: AsyncIOMotorDatabase) -> tuple[str, str]:
         {
             "state": state,
             "code_verifier": code_verifier,
+            "redirect_uri": redirect_uri,
             "created_at": datetime.now(tz=timezone.utc),
         },
         upsert=True,
@@ -91,8 +98,9 @@ async def exchange_code_for_credentials(
     """
     doc = await db.oauth_states.find_one_and_delete({"state": state})
     code_verifier = doc.get("code_verifier") if doc else None
+    redirect_uri = doc.get("redirect_uri") if doc else None
 
-    flow = get_google_auth_flow()
+    flow = get_google_auth_flow(redirect_uri=redirect_uri)
     if code_verifier:
         # Restore the verifier so fetch_token() includes it in the POST body
         flow.code_verifier = code_verifier

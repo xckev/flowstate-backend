@@ -16,13 +16,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get("/login", summary="Get Google OAuth authorization URL")
-async def login(db: DbDep):
+async def login(db: DbDep, redirect_uri: str | None = Query(default=None)):
     """
     Generate and return the Google OAuth authorization URL.
 
     The frontend should redirect the user to this URL to begin the OAuth flow.
+    Pass redirect_uri to override the default (used by Chrome extensions).
     """
-    authorization_url, state = await auth_service.get_authorization_url(db)
+    authorization_url, state = await auth_service.get_authorization_url(
+        db, redirect_uri=redirect_uri
+    )
     return {"authorization_url": authorization_url, "state": state}
 
 
