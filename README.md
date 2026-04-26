@@ -1,12 +1,19 @@
-# flowstate-ai Backend
+# FlowState Backend
 
-The backend service for flowstate-ai, an AI-powered productivity web app that converts your todo list into a fully optimized Google Calendar schedule using Google AI models.
+The intelligent engine behind **FlowState**, a personal secretary that converts natural language todo lists into optimized Google Calendar schedules. This service manages the orchestration between the Google AI API (Gemini/Gemma), the Google Calendar API, and user preference state.
 
-## Tech Stack
+## 🌟 Features
+- **Natural Language Parsing:** Interprets raw strings into structured calendar events.
+- **AI-Driven Scheduling:** Uses Google AI models to intelligently place tasks based on priority and duration.
+- **Google Calendar Sync:** Full bi-directional integration for adding, editing, and deleting events.
+- **Stateless Auth:** Secure session management via Google OAuth 2.0 and JWT.
+
+## 🚀 Tech Stack
 - **Framework:** FastAPI (Python)
 - **Database:** MongoDB (Motor Asyncio)
-- **AI Integration:** Google AI Models (Gemini, Gemma, etc.)
-- **Authentication:** Google OAuth 2.0 (with PKCE) + JWT
+- **AI Integration:** Google AI Models (configured via environment)
+- **Authentication:** Google OAuth 2.0 + JWT
+- **Frontend Repo:** [flowstate-ai](https://github.com/xckev/flowstate-ai)
 
 ---
 
