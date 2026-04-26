@@ -256,7 +256,7 @@ async def call_gemini(
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model="gemma-4-31b-it",
         contents=user_message,
         config=types.GenerateContentConfig(
             system_instruction=system_prompt,
