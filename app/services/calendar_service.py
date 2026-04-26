@@ -101,6 +101,9 @@ async def add_event(credentials: Credentials, args: AddEventArgs, timezone: str)
 
     if args.location:
         body["location"] = args.location
+        
+    if args.attendees:
+        body["attendees"] = [{"email": email} for email in args.attendees]
 
     created = service.events().insert(calendarId="primary", body=body).execute()
     return created.get("id", "")
@@ -135,6 +138,9 @@ async def edit_event(
 
     if args.location is not None:
         patch_body["location"] = args.location
+        
+    if args.attendees is not None:
+        patch_body["attendees"] = [{"email": email} for email in args.attendees]
 
     if patch_body:
         service.events().patch(

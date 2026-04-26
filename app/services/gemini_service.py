@@ -15,6 +15,7 @@ from app.models.gemini import (
     AddEventArgs,
     DeleteEventArgs,
     EditEventArgs,
+    FinalizeScheduleArgs,
     ToolCall,
 )
 from app.models.schedule import CalendarEvent, ScheduleRequest
@@ -47,6 +48,11 @@ _ADD_EVENT_FUNC = types.FunctionDeclaration(
             "location": types.Schema(
                 type=types.Type.STRING, description="Optional event location"
             ),
+            "attendees": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(type=types.Type.STRING),
+                description="Optional list of email addresses to invite",
+            ),
         },
         required=["title", "start_time", "end_time"],
     ),
@@ -78,6 +84,11 @@ _EDIT_EVENT_FUNC = types.FunctionDeclaration(
             "location": types.Schema(
                 type=types.Type.STRING, description="New event location"
             ),
+            "attendees": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(type=types.Type.STRING),
+                description="Optional list of email addresses to invite",
+            ),
         },
         required=["event_id"],
     ),
@@ -98,7 +109,22 @@ _DELETE_EVENT_FUNC = types.FunctionDeclaration(
     ),
 )
 
-_TOOLS = [types.Tool(function_declarations=[_ADD_EVENT_FUNC, _EDIT_EVENT_FUNC, _DELETE_EVENT_FUNC])]
+_FINALIZE_FUNC = types.FunctionDeclaration(
+    name="finalize_schedule",
+    description="Finalize the scheduling process and provide the summary message to the user.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "message": types.Schema(
+                type=types.Type.STRING,
+                description="Summary of scheduled items, held off items, assumptions made, and a call-to-action.",
+            ),
+        },
+        required=["message"],
+    ),
+)
+
+_TOOLS = [types.Tool(function_declarations=[_ADD_EVENT_FUNC, _EDIT_EVENT_FUNC, _DELETE_EVENT_FUNC, _FINALIZE_FUNC])]
 
 # Force Gemini to always respond with a function call (no free text)
 _TOOL_CONFIG = types.ToolConfig(
@@ -132,21 +158,11 @@ def _build_system_prompt(
         if current_gcal_events
         else "  (no events currently on the calendar for this day)"
     )
-    submitted_events_str = (
-        "\n".join(_format_event(e) for e in request.events)
-        if request.events
-        else "  (none)"
+    todos_str = (
+        "\n".join(f"- {todo}" for todo in request.todos)
+        if request.todos
+        else "  (no todos provided)"
     )
-
-    tasks_parts = []
-    for task in request.tasks:
-        parts = [f"- {task.title}"]
-        if task.duration_minutes:
-            parts.append(f"({task.duration_minutes} min)")
-        if task.deadline:
-            parts.append(f"deadline={task.deadline}")
-        tasks_parts.append(" ".join(parts))
-    tasks_str = "\n".join(tasks_parts) if tasks_parts else "  (none)"
 
     constraint_lines = []
     if prefs.break_time > 0:
@@ -172,7 +188,7 @@ def _build_system_prompt(
 
     return f"""You are FlowState, an intelligent calendar scheduling assistant.
 
-Your job is to analyse the user's existing Google Calendar, their submitted events and tasks, \
+Your job is to analyse the user's existing Google Calendar, their submitted natural language todos, \
 and their scheduling preferences, then output the minimal set of Google Calendar changes needed \
 to satisfy the user's intent.
 
@@ -182,28 +198,27 @@ to satisfy the user's intent.
 ## Current Google Calendar Events (already on the calendar)
 {gcal_str}
 
-## User-Submitted Events (time-bound, the user wants these on the calendar)
-{submitted_events_str}
-
-## User-Submitted Tasks (need to be placed into free slots)
-{tasks_str}
+## User Todos
+{todos_str}
 
 ## Scheduling Constraints
 {constraints_str}
 
 ## Instructions
-1. Compare the submitted events against the current calendar:
-   - If a submitted event has an event_id and differs from what's on the calendar, call edit_event.
-   - If a submitted event has no event_id (or it doesn't exist on the calendar yet), call add_event.
-   - If a calendar event is NOT in the submitted events list and is not a recurring event, call delete_event.
-2. For each submitted task, find a suitable free slot respecting all constraints, then call add_event.
-   - If the task already exists on the calendar, call edit_event.
-   - If the task doesn't exist on the calendar, call add_event.
-   - If a calendar entry corresponding to a task is NOT in the submitted tasks list, call delete_event.
-3. Respect all scheduling constraints strictly.
-4. Output ONLY function calls — no plain text, no commentary.
-5. For timed events: all times must be ISO 8601 with a timezone offset (e.g., 2026-04-25T09:00:00-07:00).
-6. For all-day events (marked "all-day" above): set is_all_day=true, use the exact date shown (YYYY-MM-DD) for start_time, and set end_time to the following day (e.g., start 2026-04-25 → end 2026-04-26). Never assign a time to an all-day event.
+1. Interpret the natural language "todos" into events and/or tasks to be scheduled on the user's Google Calendar.
+2. If an item corresponds to an existing event on the calendar, call edit_event to update it if necessary.
+3. If an item is new, call add_event to place it into a suitable free slot.
+4. **Hold off** on scheduling an event if its start time is unknown or ambiguous.
+5. If the end time (for an event) or estimated duration (for a task) is not provided, **default to assuming 1 hour** for all unspecified calendar entries.
+6. You can invite attendees by including their email addresses in the `attendees` field of `add_event` or `edit_event`.
+7. You MUST call `finalize_schedule` exactly once. Provide a `message` that summarizes:
+   - What things you have scheduled.
+   - What things you decided to hold off on scheduling due to lack of information.
+   - What assumptions you made (e.g., assuming 1 hour for unspecified entries).
+   - If you made any assumptions or held off on anything, end the message with a call-to-action indicating what the user should include in their todos if they want the calendar to be more exact.
+8. Output ONLY function calls — no plain text, no commentary. Use `finalize_schedule` for the textual response.
+9. For timed events: all times must be ISO 8601 with a timezone offset (e.g., 2026-04-25T09:00:00-07:00).
+10. For all-day events: set is_all_day=true, use the exact date shown (YYYY-MM-DD) for start_time, and set end_time to the following day (e.g., start 2026-04-25 → end 2026-04-26). Never assign a time to an all-day event.
 """
 
 
@@ -256,6 +271,8 @@ async def call_gemini(
                     args = EditEventArgs(**args_dict)
                 elif fn_name == "delete_event":
                     args = DeleteEventArgs(**args_dict)
+                elif fn_name == "finalize_schedule":
+                    args = FinalizeScheduleArgs(**args_dict)
                 else:
                     logger.warning("Unknown function call from Gemini: %s", fn_name)
                     continue
