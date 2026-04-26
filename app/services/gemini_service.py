@@ -212,8 +212,9 @@ to satisfy the user's intent.
 5. **If a calendar event currently on the calendar is NOT represented in the user's "todos" list, you MUST call `delete_event` to remove it.** The "todos" list is the absolute source of truth for the day.
 6. **Hold off** on scheduling an event if its start time is unknown or ambiguous.
 7. If the end time (for an event) or estimated duration (for a task) is not provided, **default to assuming 1 hour** for all unspecified calendar entries.
-8. You can invite attendees by including their email addresses in the `attendees` field of `add_event` or `edit_event`.
-9. You MUST call `finalize_schedule` exactly once. Provide a `message` that summarizes:
+8. **If you split up a task X into multiple sessions due to burnout constraints, change the title of each chunk to "Session 1: X", "Session 2: X", etc.**
+9. You can invite attendees by including their email addresses in the `attendees` field of `add_event` or `edit_event`.
+10. You MUST call `finalize_schedule` exactly once. Provide a `message` that summarizes:
    - What things you have scheduled.
    - What things you decided to hold off on scheduling due to lack of information.
    - What assumptions you made (e.g., assuming 1 hour for unspecified entries).
