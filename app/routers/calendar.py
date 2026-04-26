@@ -17,6 +17,7 @@ router = APIRouter(prefix="/calendar", tags=["calendar"])
 )
 async def get_events(
     date: str = Query(..., description="Target date in YYYY-MM-DD format", examples=["2026-04-25"]),
+    timezone: str = Query(..., description="User's local IANA timezone"),
     current_user: CurrentUser = None,
     db: DbDep = None,
 ):
@@ -33,7 +34,7 @@ async def get_events(
         )
 
     try:
-        events = await calendar_service.get_events_for_date(credentials, date)
+        events = await calendar_service.get_events_for_date(credentials, date, timezone)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

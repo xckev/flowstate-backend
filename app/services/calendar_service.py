@@ -1,7 +1,8 @@
 """Google Calendar API wrapper — all operations on the primary calendar."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
+import zoneinfo
 
 import googleapiclient.discovery
 from google.oauth2.credentials import Credentials
@@ -38,7 +39,7 @@ def _parse_event(raw: dict) -> CalendarEvent:
 
 
 async def get_events_for_date(
-    credentials: Credentials, date: str
+    credentials: Credentials, date: str, timezone: str
 ) -> list[CalendarEvent]:
     """
     Fetch all primary-calendar events for a given date (YYYY-MM-DD).
@@ -47,9 +48,13 @@ async def get_events_for_date(
     """
     service = _build_service(credentials)
 
-    # Build RFC3339 window for the full day in UTC
-    time_min = f"{date}T00:00:00Z"
-    time_max = f"{date}T23:59:59Z"
+    # Build RFC3339 window for the full day in the user's specific timezone
+    tz = zoneinfo.ZoneInfo(timezone)
+    start_dt = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=tz)
+    end_dt = start_dt.replace(hour=23, minute=59, second=59)
+
+    time_min = start_dt.isoformat()
+    time_max = end_dt.isoformat()
 
     result = (
         service.events()

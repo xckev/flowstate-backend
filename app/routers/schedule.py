@@ -45,7 +45,7 @@ async def process_schedule(
     # --- Step 2: Fetch current calendar state ---
     try:
         current_events = await calendar_service.get_events_for_date(
-            credentials, request.date
+            credentials, request.date, request.timezone
         )
     except Exception as exc:
         logger.error("Failed to fetch calendar events: %s", exc)
