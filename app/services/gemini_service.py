@@ -206,25 +206,29 @@ to satisfy the user's intent.
 {constraints_str}
 
 ## Instructions
-1. Interpret the natural language "todos" into events and/or tasks to be scheduled on the user's Google Calendar.
+1. Interpret the natural language "todos" into items to be scheduled. Use your judgement to classify each item as a **Fixed Event** (e.g., meetings, appointments, classes) or a **Flexible Task** (e.g., studying, exercising, casual activities).
 2. **If there are no "todos" provided, you must clear the day by calling `delete_event` for every single event currently on the calendar.**
 3. Use your best judgement to determine if a todo matches an existing event on the calendar. If it matches AND the calendar data is already correct, you should do NOTHING for that event. If it matches but needs updating (e.g. time change), call `edit_event`.
-4. If an item is new, call add_event to place it into a suitable free slot.
+4. If an item is new, call `add_event` to place it into a suitable free slot.
 5. **If a calendar event currently on the calendar is NOT represented in the user's "todos" list, you MUST call `delete_event` to remove it.** The "todos" list is the absolute source of truth for the day.
-6. **Hold off** on scheduling an event if its start time is unknown or ambiguous.
-7. **Hold off** on scheduling any new item if the calendar is completely full and there are no suitable free slots remaining.
-8. If the end time (for an event) or estimated duration (for a task) is not provided, **default to assuming 1 hour** for all unspecified calendar entries.
-9. **If you split up a task X into multiple sessions due to burnout constraints, change the title of each chunk to "Session 1: X", "Session 2: X", etc.**
-10. You can invite attendees by including their email addresses in the `attendees` field of `add_event` or `edit_event`.
-11. You MUST call `finalize_schedule` exactly once. Provide a `message` that summarizes:
+6. **Prioritization & Conflicts:**
+   - NEVER change the time of a Fixed Event to make room for something else.
+   - You MAY change the time of Flexible Tasks to free up slots for Fixed Events.
+   - If a new Fixed Event has a scheduling conflict with an existing Fixed Event, **hold off** on scheduling the new event.
+7. **Hold off** on scheduling an event if its start time is unknown or ambiguous.
+8. **Hold off** on scheduling any new item if the calendar is completely full and there are no suitable free slots remaining.
+9. If the end time (for an event) or estimated duration (for a task) is not provided, give your best estimate for how long the task will take. If you are truly unsure, default to assuming 1 hour.
+10. **If you split up a task X into multiple sessions due to burnout constraints, change the title of each chunk to "Session 1: X", "Session 2: X", etc.**
+11. You can invite attendees by including their email addresses in the `attendees` field of `add_event` or `edit_event`.
+12. You MUST call `finalize_schedule` exactly once. Provide a `message` that summarizes:
    - What things you have scheduled.
    - What things you decided to hold off on scheduling due to lack of information or lack of available time on the calendar.
    - What assumptions you made (e.g., assuming 1 hour for unspecified entries).
    - If there were no todos, confirm that you have cleared the day.
    - If you made any assumptions or held off on anything, end the message with a call-to-action indicating what the user should include in their todos if they want the calendar to be more exact, or note that they should free up some time.
-9. Output ONLY function calls — no plain text, no commentary. Use `finalize_schedule` for the textual response.
-10. For timed events: all times must be ISO 8601 with a timezone offset (e.g., 2026-04-25T09:00:00-07:00).
-11. For all-day events: set is_all_day=true, use the exact date shown (YYYY-MM-DD) for start_time, and set end_time to the following day (e.g., start 2026-04-25 → end 2026-04-26). Never assign a time to an all-day event.
+13. Output ONLY function calls — no plain text, no commentary. Use `finalize_schedule` for the textual response.
+14. For timed events: all times must be ISO 8601 with a timezone offset (e.g., 2026-04-25T09:00:00-07:00).
+15. For all-day events: set is_all_day=true, use the exact date shown (YYYY-MM-DD) for start_time, and set end_time to the following day (e.g., start 2026-04-25 → end 2026-04-26). Never assign a time to an all-day event.
 """
 
 
