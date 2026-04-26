@@ -66,7 +66,7 @@ async def get_events_for_date(
     return [_parse_event(item) for item in result.get("items", [])]
 
 
-async def add_event(credentials: Credentials, args: AddEventArgs) -> str:
+async def add_event(credentials: Credentials, args: AddEventArgs, timezone: str) -> str:
     """
     Insert a new event into the primary calendar.
 
@@ -76,8 +76,8 @@ async def add_event(credentials: Credentials, args: AddEventArgs) -> str:
 
     body: dict = {
         "summary": args.title,
-        "start": {"dateTime": args.start_time},
-        "end": {"dateTime": args.end_time},
+        "start": {"dateTime": args.start_time, "timeZone": timezone},
+        "end": {"dateTime": args.end_time, "timeZone": timezone},
     }
     if args.location:
         body["location"] = args.location
@@ -87,7 +87,7 @@ async def add_event(credentials: Credentials, args: AddEventArgs) -> str:
 
 
 async def edit_event(
-    credentials: Credentials, event_id: str, args: EditEventArgs
+    credentials: Credentials, event_id: str, args: EditEventArgs, timezone: str
 ) -> None:
     """Patch an existing primary-calendar event with only the provided fields."""
     service = _build_service(credentials)
@@ -96,9 +96,9 @@ async def edit_event(
     if args.title is not None:
         patch_body["summary"] = args.title
     if args.start_time is not None:
-        patch_body["start"] = {"dateTime": args.start_time}
+        patch_body["start"] = {"dateTime": args.start_time, "timeZone": timezone}
     if args.end_time is not None:
-        patch_body["end"] = {"dateTime": args.end_time}
+        patch_body["end"] = {"dateTime": args.end_time, "timeZone": timezone}
     if args.location is not None:
         patch_body["location"] = args.location
 

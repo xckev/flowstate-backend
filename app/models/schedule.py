@@ -78,6 +78,10 @@ class ScheduleRequest(BaseModel):
         description="Target date in YYYY-MM-DD format.",
         examples=["2026-04-25"],
     )
+    timezone: str = Field(
+        ...,
+        description="User's local IANA timezone, e.g. 'America/Los_Angeles'.",
+    )
     events: list[CalendarEvent] = Field(
         default_factory=list,
         description="Existing or new time-bound calendar events for the day.",

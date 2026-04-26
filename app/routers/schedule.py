@@ -73,7 +73,7 @@ async def process_schedule(
 
         try:
             if fn == "add_event" and isinstance(args, AddEventArgs):
-                new_id = await calendar_service.add_event(credentials, args)
+                new_id = await calendar_service.add_event(credentials, args, request.timezone)
                 changes.append(
                     ChangeResult(
                         action="added",
@@ -83,7 +83,7 @@ async def process_schedule(
                 )
 
             elif fn == "edit_event" and isinstance(args, EditEventArgs):
-                await calendar_service.edit_event(credentials, args.event_id, args)
+                await calendar_service.edit_event(credentials, args.event_id, args, request.timezone)
                 changes.append(
                     ChangeResult(
                         action="edited",
