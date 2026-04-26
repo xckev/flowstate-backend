@@ -187,6 +187,9 @@ to satisfy the user's intent.
    - If a submitted event has no event_id (or it doesn't exist on the calendar yet), call add_event.
    - If a calendar event is NOT in the submitted events list and is not a recurring event, call delete_event.
 2. For each submitted task, find a suitable free slot respecting all constraints, then call add_event.
+   - If the task already exists on the calendar, call edit_event.
+   - If the task doesn't exist on the calendar, call add_event.
+   - If a calendar entry corresponding to a task is NOT in the submitted tasks list, call delete_event.
 3. Respect all scheduling constraints strictly.
 4. Output ONLY function calls — no plain text, no commentary.
 5. All times must be ISO 8601 with a timezone offset (e.g., 2026-04-25T09:00:00-07:00).
