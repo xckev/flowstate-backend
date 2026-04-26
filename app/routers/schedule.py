@@ -34,6 +34,8 @@ async def process_schedule(
     4. Execute each tool call against the Google Calendar API.
     5. Return a ProcessResult containing the summary message.
     """
+    logger.info("Processing schedule request for date %s with %d todos", request.date, len(request.todos))
+    
     # --- Step 1: Load credentials ---
     credentials = await auth_service.get_credentials(current_user["user_id"], db)
     if not credentials:
@@ -65,11 +67,14 @@ async def process_schedule(
         )
 
     # --- Step 4: Execute each tool call ---
+    logger.info("Gemini returned %d tool calls", len(tool_calls))
     message = "No summary provided by Gemini."
 
     for tool_call in tool_calls:
         fn = tool_call.function_name
         args = tool_call.args
+        
+        logger.info("Executing tool: %s with args: %s", fn, args.model_dump())
 
         try:
             if fn == "finalize_schedule" and isinstance(args, FinalizeScheduleArgs):
@@ -85,6 +90,6 @@ async def process_schedule(
                 await calendar_service.delete_event(credentials, args.event_id)
 
         except Exception as exc:
-            logger.error("Failed to execute %s: %s", fn, exc)
+            logger.error("Failed to execute %s with args %s: %s", fn, args.model_dump(), exc)
 
     return ProcessResult(message=message)
