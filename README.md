@@ -1,6 +1,6 @@
-# FlowState Backend
+# Flowstate Backend
 
-The intelligent engine behind **FlowState**, a personal secretary that converts natural language todo lists into optimized Google Calendar schedules. This service manages the orchestration between the Google AI API (Gemini/Gemma), the Google Calendar API, and user preference state.
+The intelligent engine behind **Flowstate**, a personal secretary that converts natural language todo lists into optimized Google Calendar schedules. This service manages the orchestration between the Google AI API (Gemini/Gemma), the Google Calendar API, and user preference state.
 
 ## 🌟 Features
 - **Natural Language Parsing:** Interprets raw strings into structured calendar events.
